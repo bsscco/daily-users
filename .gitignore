@@ -1,0 +1,8 @@
+.idea/
+node_modules/
+config.json
+crontab.log
+db-queries.js
+deployvpn.sh
+package-lock.json
+sshvpn.sh
