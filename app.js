@@ -76,6 +76,7 @@ app.get('/notify/yesterday/users', (req, res) => {
 function makeNotiMsgPayload(dates, signInCnts) {
     const yesterdayIncrRate = (signInCnts.yesterday - signInCnts.lastWeekYesterday) / signInCnts.lastWeekYesterday * 100;
     const thisWeekIncrRate = (signInCnts.thisWeek - signInCnts.lastWeek) / signInCnts.lastWeek * 100;
+    const thisMonthIncrRate = (signInCnts.thisMonth - signInCnts.lastMonth) / signInCnts.lastMonth * 100;
 
     const json = {
         channel: config.slack.noti_channel_id,
@@ -88,7 +89,7 @@ function makeNotiMsgPayload(dates, signInCnts) {
                 fields: [
                     {
                         title: dates.yesterday.format('MM/DD(ddd)') + ' 어제',
-                        value: '약 ' + numberFormat('#,##0.', signInCnts.yesterday) + '명 (지난 주 대비 ' + (yesterdayIncrRate >= 0 ? '▲' : '▼') + numberFormat('#,##0.##%', Math.abs(yesterdayIncrRate)) + ')',
+                        value: numberFormat('#,##0.', signInCnts.yesterday) + '명 (지난 주 대비 ' + (yesterdayIncrRate >= 0 ? '▲' : '▼') + numberFormat('#,##0.##%', Math.abs(yesterdayIncrRate)) + ')',
                         short: false
                     }
                 ]
@@ -101,7 +102,7 @@ function makeNotiMsgPayload(dates, signInCnts) {
                 fields: [
                     {
                         title: moment(dates.yesterday).startOf('week').format('MM/DD(ddd)') + ' ~ 어제까지',
-                        value: '약 ' + numberFormat('#,##0.', signInCnts.thisWeek) + '명 (지난 주 대비 ' + (thisWeekIncrRate >= 0 ? '▲' : '▼') + numberFormat('#,##0.##%', Math.abs(thisWeekIncrRate)) + ')',
+                        value: numberFormat('#,##0.', signInCnts.thisWeek) + '명 (지난 주 대비 ' + (thisWeekIncrRate >= 0 ? '▲' : '▼') + numberFormat('#,##0.##%', Math.abs(thisWeekIncrRate)) + ')',
                         short: false
                     }
                 ]
@@ -114,7 +115,7 @@ function makeNotiMsgPayload(dates, signInCnts) {
                 fields: [
                     {
                         title: moment(dates.yesterday).startOf('month').format('MM/DD(ddd)') + ' ~ 어제까지',
-                        value: '약 ' + numberFormat('#,##0.', signInCnts.thisMonth) + '명',
+                        value: numberFormat('#,##0.', signInCnts.thisMonth) + '명 (지난 월 대비 ' + (thisMonthIncrRate >= 0 ? '▲' : '▼') + numberFormat('#,##0.##%', Math.abs(thisMonthIncrRate)) + ')',
                         short: false
                     }
                 ]
