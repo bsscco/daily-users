@@ -60,7 +60,7 @@ app.get('/notify/yesterday/users', (req, res) => {
         })
         .then((rows) => {
             signInCnts.thisMonth = rows[0].cnt;
-            return db.any(queries.getSignInCnt(moment(dates.yesterday).subtract(1, 'months').startOf('month'), moment(dates.yesterday).startOf('month')));
+            return db.any(queries.getSignInCnt(moment(dates.yesterday).subtract(1, 'months').startOf('month'), moment(yesterday).subtract(1, 'months').set('date', today.get('date'))));
         })
         .then((rows) => {
             signInCnts.lastMonth = rows[0].cnt;
