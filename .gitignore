@@ -6,3 +6,4 @@ db-queries.js
 deployvpn.sh
 package-lock.json
 sshvpn.sh
+firebase-service-account.json
