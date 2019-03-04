@@ -72,7 +72,7 @@ app.get('/notify/yesterday/users', (req, res) => {
         lastWeekYesterday: 0,
         thisWeek: 0,
         lastWeek: 0,
-        lastWeekRemained: 0,
+        toYesterdayFor7Days: 0,
         thisMonth: 0,
         lastMonth: 0,
         thisMonthGoal: 0,
@@ -90,30 +90,30 @@ app.get('/notify/yesterday/users', (req, res) => {
             return db.any(queries.getSignInCnt(dates.yesterday, dates.today));
         })
         .then((rows) => {
-            signInCnts.yesterday = rows[0].cnt;
+            signInCnts.yesterday = parseInt(rows[0].cnt);
             return db.any(queries.getSignInCnt(dates.lastWeekYesterday, dates.lastWeekToday));
         })
         .then((rows) => {
-            signInCnts.lastWeekYesterday = rows[0].cnt;
+            signInCnts.lastWeekYesterday = parseInt(rows[0].cnt);
             return db.any(queries.getSignInCnt(moment(dates.yesterday).startOf('week'), dates.today));
         })
         .then((rows) => {
-            signInCnts.thisWeek = rows[0].cnt;
+            signInCnts.thisWeek = parseInt(rows[0].cnt);
             return db.any(queries.getSignInCnt(moment(dates.lastWeekYesterday).startOf('week'), dates.lastWeekToday));
         })
         .then((rows) => {
-            signInCnts.lastWeek = rows[0].cnt;
-            return db.any(queries.getSignInCnt(moment(dates.lastWeekToday), moment(dates.yesterday).startOf('week')));
+            signInCnts.lastWeek = parseInt(rows[0].cnt);
+            return db.any(queries.getSignInCnt(moment(dates.today).subtract(7, 'days'), moment(dates.today)));
         })
         .then((rows) => {
-            signInCnts.lastWeekRemained = rows[0].cnt;
+            signInCnts.toYesterdayFor7Days = parseInt(rows[0].cnt);
             return db.any(queries.getSignInCnt(moment(dates.yesterday).startOf('month'), dates.today));
         })
         .then((rows) => {
-            signInCnts.thisMonth = rows[0].cnt;
+            signInCnts.thisMonth = parseInt(rows[0].cnt);
             return db.any(queries.getSignInCnt(moment(dates.yesterday).subtract(1, 'months').startOf('month'), moment(yesterday).subtract(1, 'months').set('date', today.get('date'))));
         })
-        .then((rows) => signInCnts.lastMonth = rows[0].cnt)
+        .then((rows) => signInCnts.lastMonth = parseInt(rows[0].cnt))
         .then(() => sendMsg('', makeNotiMsgPayload(dates, signInCnts)))
         .then(res => console.log(res.data))
         .catch((e) => console.log(e.message));
@@ -211,7 +211,7 @@ function makeNotiMsgPayload(dates, signInCnts) {
     const thisMonthIncrRate = (signInCnts.thisMonth - signInCnts.lastMonth) / signInCnts.lastMonth * 100;
     let thisMonthExpected = 0;
     if (dates.yesterday.date() < 7) {
-        thisMonthExpected = (signInCnts.thisWeek + signInCnts.lastWeekRemained) / 7 * dates.yesterday.daysInMonth();
+        thisMonthExpected = signInCnts.toYesterdayFor7Days / 7 * dates.yesterday.daysInMonth();
     } else {
         thisMonthExpected = signInCnts.thisMonth / dates.yesterday.date() * dates.yesterday.daysInMonth();
     }
@@ -257,11 +257,11 @@ function makeNotiMsgPayload(dates, signInCnts) {
                         value: numberFormat('#,##0.', signInCnts.thisMonth) + '명 (지난 월 대비 ' + (thisMonthIncrRate >= 0 ? '▲' : '▼') + numberFormat('#,##0.##%', Math.abs(thisMonthIncrRate)) + ')',
                         short: true
                     },
-                    {
-                        title: dates.yesterday.format('MM월') + ' 예상',
-                        value: numberFormat('#,##0.', thisMonthExpected) + '명 (목표 ' + numberFormat('#,##0.', signInCnts.thisMonthGoal) + '명)\n*`' + numberFormat('#,##0.', Math.abs(signInCnts.thisMonthGoal - thisMonthExpected)) + '명' + (signInCnts.thisMonthGoal - thisMonthExpected >= 0 ? ' 더 필요' : ' 초과달성') + '`*',
-                        short: true
-                    }
+                    // {
+                    //     title: dates.yesterday.format('MM월') + ' 예상',
+                    //     value: numberFormat('#,##0.', thisMonthExpected) + '명 (목표 ' + numberFormat('#,##0.', signInCnts.thisMonthGoal) + '명)\n*`' + numberFormat('#,##0.', Math.abs(signInCnts.thisMonthGoal - thisMonthExpected)) + '명' + (signInCnts.thisMonthGoal - thisMonthExpected >= 0 ? ' 더 필요' : ' 초과달성') + '`*',
+                    //     short: true
+                    // }
                 ]
             }
         ]
