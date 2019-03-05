@@ -261,7 +261,12 @@ function makeNotiMsgPayload(dates, signInCnts) {
                     //     title: dates.yesterday.format('MM월') + ' 예상',
                     //     value: numberFormat('#,##0.', thisMonthExpected) + '명 (목표 ' + numberFormat('#,##0.', signInCnts.thisMonthGoal) + '명)\n*`' + numberFormat('#,##0.', Math.abs(signInCnts.thisMonthGoal - thisMonthExpected)) + '명' + (signInCnts.thisMonthGoal - thisMonthExpected >= 0 ? ' 더 필요' : ' 초과달성') + '`*',
                     //     short: true
-                    // }
+                    // },
+                    {
+                        title: dates.yesterday.format('MM월') + ' 목표',
+                        value: numberFormat('#,##0.', signInCnts.thisMonthGoal) + '명',
+                        short: true
+                    },
                 ]
             }
         ]
