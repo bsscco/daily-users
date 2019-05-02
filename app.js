@@ -33,7 +33,7 @@ app.post('/users', (req, res) => {
     res.send('');
 
     if (req.body.text === 'goal') {
-        getDbUsers()
+        getUsersGoal()
             .then(snapshot => openDlg(req.body.trigger_id, makeGoalSettingDlgPayload(snapshot.val())))
             .then(res => console.log(res.data))
             .catch(err => console.log(err));
@@ -58,17 +58,28 @@ app.post('/interact', (req, res) => {
 app.get('/notify/yesterday/users', (req, res) => {
     res.sendStatus(200);
 
-    const today = moment();
-    const yesterday = moment(today).subtract(1, 'days');
-    // const today = moment({y: 2018, M: Number(process.argv[2]), d: date}).add(1, 'days');
-    const dates = {
-        today,
-        yesterday,
-        lastWeekToday: moment(today).subtract(7, 'days'),
-        lastWeekYesterday: moment(yesterday).subtract(7, 'days'),
-    }
+    const dates = {};
+    dates.thisWeekToday = moment();
+    // dates.thisWeekToday = moment({y: 2019, M: /*Number(process.argv[2])*/2, d: 31});
+    dates.thisWeekYesterday = moment(dates.thisWeekToday).subtract(1, 'days');
+    dates.thisWeekFirstDay = moment(dates.thisWeekYesterday).startOf('week');
+
+    dates.lastWeekToday = moment(dates.thisWeekToday).subtract(7, 'days');
+    dates.lastWeekYesterday = moment(dates.lastWeekToday).subtract(1, 'days');
+    dates.lastWeekFirstDay = moment(dates.lastWeekYesterday).startOf('week');
+
+    dates.thisMonthToday = moment(dates.thisWeekToday);
+    dates.thisMonthYesterday = moment(dates.thisWeekYesterday);
+    dates.thisMonthFirstDay = moment(dates.thisMonthYesterday).startOf('month');
+
+    dates.lastMonthToday = moment(dates.thisMonthYesterday).subtract(1, 'months').set('date', dates.thisMonthYesterday.get('date')).add(1, 'days');
+    dates.lastMonthYesterday = moment(dates.lastMonthToday).subtract(1, 'days');
+    dates.lastMonthFirstDay = moment(dates.thisMonthYesterday).subtract(1, 'months').startOf('month');
+
+    console.log(dates);
+
     const signInCnts = {
-        yesterday: 0,
+        thisWeekYesterday: 0,
         lastWeekYesterday: 0,
         thisWeek: 0,
         lastWeek: 0,
@@ -84,34 +95,34 @@ app.get('/notify/yesterday/users', (req, res) => {
         user: config.db.user,
         password: config.db.pwd
     });
-    getDbUsers(yesterday.format('YYYY-MM'))
+    getUsersGoal(dates.thisWeekYesterday.format('YYYY-MM'))
         .then(snapshot => {
-            signInCnts.thisMonthGoal = parseInt(snapshot.val().goal);
-            return db.any(queries.getSignInCnt(dates.yesterday, dates.today));
+            signInCnts.thisMonthGoal = parseInt(snapshot.val() == null ? 0 : snapshot.val().goal);
+            return db.any(queries.getSignInCnt(dates.thisWeekYesterday, dates.thisWeekToday));
         })
         .then((rows) => {
-            signInCnts.yesterday = parseInt(rows[0].cnt);
+            signInCnts.thisWeekYesterday = parseInt(rows[0].cnt);
             return db.any(queries.getSignInCnt(dates.lastWeekYesterday, dates.lastWeekToday));
         })
         .then((rows) => {
             signInCnts.lastWeekYesterday = parseInt(rows[0].cnt);
-            return db.any(queries.getSignInCnt(moment(dates.yesterday).startOf('week'), dates.today));
+            return db.any(queries.getSignInCnt(dates.thisWeekFirstDay, dates.thisWeekToday));
         })
         .then((rows) => {
             signInCnts.thisWeek = parseInt(rows[0].cnt);
-            return db.any(queries.getSignInCnt(moment(dates.lastWeekYesterday).startOf('week'), dates.lastWeekToday));
+            return db.any(queries.getSignInCnt(dates.lastWeekFirstDay, dates.lastWeekToday));
         })
         .then((rows) => {
             signInCnts.lastWeek = parseInt(rows[0].cnt);
-            return db.any(queries.getSignInCnt(moment(dates.today).subtract(7, 'days'), moment(dates.today)));
+            return db.any(queries.getSignInCnt(moment(dates.thisWeekToday).subtract(7, 'days'), dates.thisWeekToday));
         })
         .then((rows) => {
             signInCnts.toYesterdayFor7Days = parseInt(rows[0].cnt);
-            return db.any(queries.getSignInCnt(moment(dates.yesterday).startOf('month'), dates.today));
+            return db.any(queries.getSignInCnt(dates.thisMonthFirstDay, dates.thisMonthToday));
         })
         .then((rows) => {
             signInCnts.thisMonth = parseInt(rows[0].cnt);
-            return db.any(queries.getSignInCnt(moment(dates.yesterday).subtract(1, 'months').startOf('month'), moment(yesterday).subtract(1, 'months').endOf('month').add(1, 'days')));
+            return db.any(queries.getSignInCnt(dates.lastMonthFirstDay, dates.lastMonthToday));
         })
         .then((rows) => signInCnts.lastMonth = parseInt(rows[0].cnt))
         .then(() => sendMsg('', makeNotiMsgPayload(dates, signInCnts)))
@@ -119,7 +130,7 @@ app.get('/notify/yesterday/users', (req, res) => {
         .catch((e) => console.log(e.message));
 });
 
-function getDbUsers(date) {
+function getUsersGoal(date) {
     let path = '/daily-users';
     if (date) {
         path += '/' + date;
@@ -206,14 +217,14 @@ function makeGoalSavedMsgPayload(date, goal) {
 }
 
 function makeNotiMsgPayload(dates, signInCnts) {
-    const yesterdayIncrRate = (signInCnts.yesterday - signInCnts.lastWeekYesterday) / signInCnts.lastWeekYesterday * 100;
+    const yesterdayIncrRate = (signInCnts.thisWeekYesterday - signInCnts.lastWeekYesterday) / signInCnts.lastWeekYesterday * 100;
     // const thisWeekIncrRate = (signInCnts.thisWeek - signInCnts.lastWeek) / signInCnts.lastWeek * 100;
     const thisMonthIncrRate = (signInCnts.thisMonth - signInCnts.lastMonth) / signInCnts.lastMonth * 100;
     let thisMonthExpected = 0;
-    if (dates.yesterday.date() < 7) {
-        thisMonthExpected = signInCnts.toYesterdayFor7Days / 7 * dates.yesterday.daysInMonth();
+    if (dates.thisWeekYesterday.date() < 7) {
+        thisMonthExpected = signInCnts.toYesterdayFor7Days / 7 * dates.thisWeekYesterday.daysInMonth();
     } else {
-        thisMonthExpected = signInCnts.thisMonth / dates.yesterday.date() * dates.yesterday.daysInMonth();
+        thisMonthExpected = signInCnts.thisMonth / dates.thisWeekYesterday.date() * dates.thisWeekYesterday.daysInMonth();
     }
     thisMonthExpected = Math.round(thisMonthExpected);
 
@@ -227,8 +238,8 @@ function makeNotiMsgPayload(dates, signInCnts) {
                 text: '',
                 fields: [
                     {
-                        title: dates.yesterday.format('MM/DD(ddd)') + ' 어제',
-                        value: numberFormat('#,##0.', signInCnts.yesterday) + '명 (지난 주 대비 ' + (yesterdayIncrRate >= 0 ? '▲' : '▼') + numberFormat('#,##0.##%', Math.abs(yesterdayIncrRate)) + ')',
+                        title: dates.thisWeekYesterday.format('MM/DD(ddd)') + ' 어제',
+                        value: numberFormat('#,##0.', signInCnts.thisWeekYesterday) + '명 (지난 주 대비 ' + (yesterdayIncrRate >= 0 ? '▲' : '▼') + numberFormat('#,##0.##%', Math.abs(yesterdayIncrRate)) + ')',
                         short: true
                     }
                 ]
@@ -253,7 +264,7 @@ function makeNotiMsgPayload(dates, signInCnts) {
                 text: '',
                 fields: [
                     {
-                        title: moment(dates.yesterday).startOf('month').format('MM/DD(ddd)') + ' ~ 어제까지',
+                        title: moment(dates.thisWeekYesterday).startOf('month').format('MM/DD(ddd)') + ' ~ 어제까지',
                         value: numberFormat('#,##0.', signInCnts.thisMonth) + '명 (지난 월 대비 ' + (thisMonthIncrRate >= 0 ? '▲' : '▼') + numberFormat('#,##0.##%', Math.abs(thisMonthIncrRate)) + ')',
                         short: true
                     },
@@ -263,8 +274,8 @@ function makeNotiMsgPayload(dates, signInCnts) {
                     //     short: true
                     // },
                     {
-                        title: dates.yesterday.format('MM월') + ' 목표',
-                        value: numberFormat('#,##0.', signInCnts.thisMonthGoal) + '명',
+                        title: dates.thisWeekYesterday.format('MM월') + ' 목표',
+                        value: signInCnts.thisMonthGoal == 0 ? '`목표 설정 안 됨`' : numberFormat('#,##0.', signInCnts.thisMonthGoal) + '명',
                         short: true
                     },
                 ]
